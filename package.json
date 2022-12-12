@@ -1,16 +1,16 @@
 {
   "private": true,
-  "displayName": "Plugin Name",
-  "name": "homebridge-plugin-name",
-  "version": "1.0.0",
-  "description": "A short description about what your plugin does.",
+  "displayName": "Homebridge Shark Vacuum",
+  "name": "homebridge-shark-vacuum",
+  "version": "0.0.1",
+  "description": "A Homebridge plugin in for controlling and interacting with Shark Robot Vacuums",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME.git"
+    "url": "https://github.com/dmmulroy/homebridge-shark-vacuum.git"
   },
   "bugs": {
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME/issues"
+    "url": "https://github.com/dmmulroy/homebridge-shark-vacuum/issues"
   },
   "engines": {
     "node": ">=14.18.1",
@@ -26,9 +26,14 @@
   "keywords": [
     "homebridge-plugin"
   ],
-  "dependencies": {},
+  "dependencies": {
+    "node-fetch": "^3.3.0",
+    "ts-custom-error": "^3.3.1",
+    "zod": "^3.19.1"
+  },
   "devDependencies": {
     "@types/node": "^16.10.9",
+    "@types/node-fetch": "^2.6.2",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^8.0.1",
