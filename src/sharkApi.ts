@@ -90,70 +90,42 @@ export class SharkAPIClient {
   }
 
   public async login() {
-    try {
-      const loginResponseData = await this.fetch(
-        '/users/sign_in',
-        loginSchema,
-        {
-          method: 'post',
-          body: JSON.stringify({
-            user: {
-              email: this.email,
-              password: this.password,
-              application: {
-                app_id: this.appId,
-                app_secret: this.appSecret,
-              },
-            },
-          }),
+    const loginResponseData = await this.fetch('/users/sign_in', loginSchema, {
+      method: 'post',
+      body: JSON.stringify({
+        user: {
+          email: this.email,
+          password: this.password,
+          application: {
+            app_id: this.appId,
+            app_secret: this.appSecret,
+          },
         },
-      );
+      }),
+    });
 
-      this.expirationTime = Date.now() + loginResponseData.expires_in * 1000;
-      this.accessToken = loginResponseData.access_token;
-      this.refreshToken = loginResponseData.refresh_token;
-    } catch (error) {
-      if (error instanceof SharkAPIError) {
-        throw error;
-      } else {
-        throw new SharkAPIError(
-          `An error occured while attempting to login: ${getErrorMessage(
-            error,
-          )}`,
-        );
-      }
-    }
+    this.expirationTime = Date.now() + loginResponseData.expires_in * 1000;
+    this.accessToken = loginResponseData.access_token;
+    this.refreshToken = loginResponseData.refresh_token;
   }
 
   private async refreshAcessToken() {
-    try {
-      const loginResponseData = await this.fetch(
-        '/users/refresh_token',
-        loginSchema,
-        {
-          method: 'post',
-          body: JSON.stringify({
-            user: {
-              refresh_token: this.refreshToken,
-            },
-          }),
-        },
-      );
+    const loginResponseData = await this.fetch(
+      '/users/refresh_token',
+      loginSchema,
+      {
+        method: 'post',
+        body: JSON.stringify({
+          user: {
+            refresh_token: this.refreshToken,
+          },
+        }),
+      },
+    );
 
-      this.expirationTime = Date.now() + loginResponseData.expires_in * 1000;
-      this.accessToken = loginResponseData.access_token;
-      this.refreshToken = loginResponseData.refresh_token;
-    } catch (error) {
-      if (error instanceof SharkAPIError) {
-        throw error;
-      } else {
-        throw new SharkAPIError(
-          `An error occured while attempting to login: ${getErrorMessage(
-            error,
-          )}`,
-        );
-      }
-    }
+    this.expirationTime = Date.now() + loginResponseData.expires_in * 1000;
+    this.accessToken = loginResponseData.access_token;
+    this.refreshToken = loginResponseData.refresh_token;
   }
 
   private getAccessTokenStatus():
@@ -178,85 +150,39 @@ export class SharkAPIClient {
   }
 
   public async getAllDevices() {
-    try {
-      const devices = await this.fetch(
-        `${BASE_API_URL}/apiv1/devices`,
-        getAllDevicesSchema,
-      );
+    const devices = await this.fetch(
+      `${BASE_API_URL}/apiv1/devices`,
+      getAllDevicesSchema,
+    );
 
-      return devices.map(({ device }) => device);
-    } catch (error) {
-      if (error instanceof SharkAPIError) {
-        throw error;
-      } else {
-        throw new SharkAPIError(
-          `An error while retrieving all devices: ${getErrorMessage(error)}`,
-        );
-      }
-    }
+    return devices.map(({ device }) => device);
   }
 
   public async getDeviceMetadata(deviceSerialNumber: string) {
-    try {
-      const metadata = await this.fetch(
-        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/data`,
-        getDeviceMetadataSchema,
-      );
+    const metadata = await this.fetch(
+      `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/data`,
+      getDeviceMetadataSchema,
+    );
 
-      return metadata;
-    } catch (error) {
-      if (error instanceof SharkAPIError) {
-        throw error;
-      } else {
-        throw new SharkAPIError(
-          `An error while retrieving metadata for device ${deviceSerialNumber}: ${getErrorMessage(
-            error,
-          )}`,
-        );
-      }
-    }
+    return metadata;
   }
 
   public async getDeviceProperties(deviceSerialNumber: string) {
-    try {
-      const properties = await this.fetch(
-        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties`,
-        getDevicePropertiesSchema,
-      );
+    const properties = await this.fetch(
+      `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties`,
+      getDevicePropertiesSchema,
+    );
 
-      return properties.map(({ property }) => property);
-    } catch (error) {
-      if (error instanceof SharkAPIError) {
-        throw error;
-      } else {
-        throw new SharkAPIError(
-          `An error while retrieving properties for device ${deviceSerialNumber}: ${getErrorMessage(
-            error,
-          )}`,
-        );
-      }
-    }
+    return properties.map(({ property }) => property);
   }
 
   public async getDeviceProperty(deviceSerialNumber: string, property: string) {
-    try {
-      const result = await this.fetch(
-        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties/GET_${property}`,
-        getDevicePropertySchema,
-      );
+    const result = await this.fetch(
+      `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties/GET_${property}`,
+      getDevicePropertySchema,
+    );
 
-      return result.property;
-    } catch (error) {
-      if (error instanceof SharkAPIError) {
-        throw error;
-      } else {
-        throw new SharkAPIError(
-          `An error while retrieving properties for device ${deviceSerialNumber}: ${getErrorMessage(
-            error,
-          )}`,
-        );
-      }
-    }
+    return result.property;
   }
 
   public async setDeviceProperty(
