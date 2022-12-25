@@ -43,8 +43,8 @@ export class SharkAPIClient {
   ) {
     try {
       const mergedOptions = {
-        ...opts,
         method: 'get',
+        ...opts,
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
@@ -125,7 +125,7 @@ export class SharkAPIClient {
     }
   }
 
-  public async refreshAcessToken() {
+  private async refreshAcessToken() {
     try {
       const loginResponseData = await this.fetch(
         '/users/refresh_token',
@@ -225,6 +225,60 @@ export class SharkAPIClient {
       );
 
       return properties.map(({ property }) => property);
+    } catch (error) {
+      if (error instanceof SharkAPIError) {
+        throw error;
+      } else {
+        throw new SharkAPIError(
+          `An error while retrieving properties for device ${deviceSerialNumber}: ${getErrorMessage(
+            error,
+          )}`,
+        );
+      }
+    }
+  }
+
+  public async getDeviceProperty(deviceSerialNumber: string, property: string) {
+    try {
+      const result = await this.fetch(
+        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties/GET_${property}`,
+        getDevicePropertySchema,
+      );
+
+      return result.property;
+    } catch (error) {
+      if (error instanceof SharkAPIError) {
+        throw error;
+      } else {
+        throw new SharkAPIError(
+          `An error while retrieving properties for device ${deviceSerialNumber}: ${getErrorMessage(
+            error,
+          )}`,
+        );
+      }
+    }
+  }
+
+  public async setDeviceProperty(
+    deviceSerialNumber: string,
+    property: string,
+    value: string,
+  ) {
+    try {
+      const result = await this.fetch(
+        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties/SET_${property}`,
+        getDevicePropertySchema,
+        {
+          method: 'post',
+          body: JSON.stringify({
+            datapoint: {
+              value,
+            },
+          }),
+        },
+      );
+
+      return result.property;
     } catch (error) {
       if (error instanceof SharkAPIError) {
         throw error;
@@ -366,3 +420,12 @@ const getDevicePropertiesSchema = z.array(
     }),
   }),
 );
+
+const setDevicePropertySchema = z.object({
+  datapoint: z.object({
+    created_at: z.string().optional(),
+    updated_at: z.string().optional(),
+    echo: z.boolean().optional(),
+    value: z.string().or(z.number()).or(z.boolean()),
+  }),
+});
