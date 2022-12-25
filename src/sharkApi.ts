@@ -47,6 +47,7 @@ export class SharkAPIClient {
         method: 'get',
         headers: {
           'Content-Type': 'application/json',
+          Accept: 'application/json',
           ...opts?.headers,
         },
       };
@@ -55,6 +56,12 @@ export class SharkAPIClient {
         mergedOptions.headers[
           'Authorization'
         ] = `auth_token ${this.accessToken}`;
+      }
+
+      const accessTokenStatus = this.getAccessTokenStatus();
+
+      if (['expiring_soon', 'expired'].includes(accessTokenStatus)) {
+        await this.refreshAcessToken();
       }
 
       const response = await fetch(`${BASE_API_URL}${endpoint}`, opts);
@@ -85,7 +92,7 @@ export class SharkAPIClient {
   public async login() {
     try {
       const loginResponseData = await this.fetch(
-        '/users/sign_in.json',
+        '/users/sign_in',
         loginSchema,
         {
           method: 'post',
@@ -102,9 +109,9 @@ export class SharkAPIClient {
         },
       );
 
+      this.expirationTime = Date.now() + loginResponseData.expires_in * 1000;
       this.accessToken = loginResponseData.access_token;
       this.refreshToken = loginResponseData.refresh_token;
-      this.expirationTime = Date.now() + loginResponseData.expires_in;
     } catch (error) {
       if (error instanceof SharkAPIError) {
         throw error;
@@ -118,10 +125,62 @@ export class SharkAPIClient {
     }
   }
 
+  public async refreshAcessToken() {
+    try {
+      const loginResponseData = await this.fetch(
+        '/users/refresh_token',
+        loginSchema,
+        {
+          method: 'post',
+          body: JSON.stringify({
+            user: {
+              refresh_token: this.refreshToken,
+            },
+          }),
+        },
+      );
+
+      this.expirationTime = Date.now() + loginResponseData.expires_in * 1000;
+      this.accessToken = loginResponseData.access_token;
+      this.refreshToken = loginResponseData.refresh_token;
+    } catch (error) {
+      if (error instanceof SharkAPIError) {
+        throw error;
+      } else {
+        throw new SharkAPIError(
+          `An error occured while attempting to login: ${getErrorMessage(
+            error,
+          )}`,
+        );
+      }
+    }
+  }
+
+  private getAccessTokenStatus():
+    | 'fresh'
+    | 'expiring_soon'
+    | 'expired'
+    | 'unauthenticated' {
+    if (!this.expirationTime) {
+      return 'unauthenticated';
+    }
+
+    if (Date.now() >= this.expirationTime) {
+      return 'expired';
+    }
+
+    // expiring_soon will be returned if there is less than 30 minutes until expiration
+    if (this.expirationTime - Date.now() < 1800 * 1000) {
+      return 'expiring_soon';
+    }
+
+    return 'fresh';
+  }
+
   public async getAllDevices() {
     try {
       const devices = await this.fetch(
-        `${BASE_API_URL}/apiv1/devices.json`,
+        `${BASE_API_URL}/apiv1/devices`,
         getAllDevicesSchema,
       );
 
@@ -140,7 +199,7 @@ export class SharkAPIClient {
   public async getDeviceMetadata(deviceSerialNumber: string) {
     try {
       const metadata = await this.fetch(
-        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/data.json`,
+        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/data`,
         getDeviceMetadataSchema,
       );
 
@@ -161,7 +220,7 @@ export class SharkAPIClient {
   public async getDeviceProperties(deviceSerialNumber: string) {
     try {
       const properties = await this.fetch(
-        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/data.json`,
+        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties`,
         getDevicePropertiesSchema,
       );
 
