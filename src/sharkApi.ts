@@ -15,8 +15,8 @@ const BASE_API_URL = 'https://ads-field-39a9391a.aylanetworks.com';
 
 export class SharkAPIClient {
   private accessToken: string | undefined;
-  // private refreshToken: string | undefined;
-  // private expirationTime: number | undefined;
+  private refreshToken: string | undefined;
+  private expirationTime: number | undefined;
   private readonly appId: AppId;
   private readonly appSecret: AppSecret;
 
