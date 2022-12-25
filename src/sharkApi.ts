@@ -4,7 +4,9 @@ import { getErrorMessage } from './getErrorMessage';
 import { CustomError } from 'ts-custom-error';
 
 type MobileOSType = 'Apple iOS' | 'Android OS';
+
 type AppId = 'Shark-iOS-field-id' | 'Shark-Android-field-id';
+
 type AppSecret =
   | 'Shark-iOS-field-_wW7SiwgrHN8dpU_ugCattOoDk8'
   | 'Shark-Android-field-Wv43MbdXRM297HUHotqe6lU1n-w';
@@ -13,8 +15,8 @@ const BASE_API_URL = 'https://ads-field-39a9391a.aylanetworks.com';
 
 export class SharkAPIClient {
   private accessToken: string | undefined;
-  private refreshToken: string | undefined;
-  private expirationTime: number | undefined;
+  // private refreshToken: string | undefined;
+  // private expirationTime: number | undefined;
   private readonly appId: AppId;
   private readonly appSecret: AppSecret;
 
@@ -86,7 +88,7 @@ export class SharkAPIClient {
         '/users/sign_in.json',
         loginSchema,
         {
-          method: 'POST',
+          method: 'post',
           body: JSON.stringify({
             user: {
               email: this.email,
@@ -135,10 +137,10 @@ export class SharkAPIClient {
     }
   }
 
-  public async getDeviceMetadata(deviceId: string) {
+  public async getDeviceMetadata(deviceSerialNumber: string) {
     try {
       const metadata = await this.fetch(
-        `${BASE_API_URL}/apiv1/dsns/${deviceId}/data.json`,
+        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/data.json`,
         getDeviceMetadataSchema,
       );
 
@@ -148,7 +150,7 @@ export class SharkAPIClient {
         throw error;
       } else {
         throw new SharkAPIError(
-          `An error while retrieving metadata for device ${deviceId}: ${getErrorMessage(
+          `An error while retrieving metadata for device ${deviceSerialNumber}: ${getErrorMessage(
             error,
           )}`,
         );
@@ -156,20 +158,20 @@ export class SharkAPIClient {
     }
   }
 
-  public async getDeviceProperties(deviceId: string) {
+  public async getDeviceProperties(deviceSerialNumber: string) {
     try {
       const properties = await this.fetch(
-        `${BASE_API_URL}/apiv1/dsns/${deviceId}/data.json`,
+        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/data.json`,
         getDevicePropertiesSchema,
       );
 
-      return properties;
+      return properties.map(({ property }) => property);
     } catch (error) {
       if (error instanceof SharkAPIError) {
         throw error;
       } else {
         throw new SharkAPIError(
-          `An error while retrieving properties for device ${deviceId}: ${getErrorMessage(
+          `An error while retrieving properties for device ${deviceSerialNumber}: ${getErrorMessage(
             error,
           )}`,
         );
@@ -182,12 +184,15 @@ export class SharkAPIClient {
 class SharkAPIError extends CustomError {}
 
 class SharkBadRequestError extends SharkAPIError {
+  readonly code: number;
+
   constructor(errorMsg: string, code: number) {
     super(errorMsg);
+    this.code = code;
   }
 }
 
-class UnauthenticatedError extends SharkAPIError {}
+// class UnauthenticatedError extends SharkAPIError {}
 
 // Zod Validators
 const loginSchema = z.object({
@@ -257,17 +262,48 @@ const getAllDevicesSchema = z.array(deviceSchema);
 const errorSceham = z.object({ error: z.string() });
 
 // Zod Inferred Types
-type Device = z.infer<typeof deviceSchema>['device'];
+// type Device = z.infer<typeof deviceSchema>['device'];
 
-const getDeviceMetadataSchema = z.object({
-  datum: z.object({
-    created_at: z.string().optional(),
-    from_template: z.boolean().optional(),
-    key: z.string().optional(),
-    update_at: z.string().optional(),
-    value: z.object({}).optional(),
-    dsn: z.string().optional(),
+const getDeviceMetadataSchema = z.array(
+  z.object({
+    datum: z.object({
+      created_at: z.string().optional(),
+      from_template: z.boolean().optional(),
+      key: z.string().optional(),
+      update_at: z.string().optional(),
+      value: z.object({}).optional(),
+      dsn: z.string().optional(),
+    }),
   }),
-});
+);
 
-const getDevicePropertiesSchema = z.object({});
+const getDevicePropertiesSchema = z.array(
+  z.object({
+    property: z.object({
+      type: z.string().optional(),
+      name: z.string().optional(),
+      'base-type': z.string().optional(),
+      'read-only': z.boolean().optional(),
+      direction: z.string().optional(),
+      scope: z.string().optional(),
+      'data-updated-at': z.string().optional(),
+      key: z.number().optional(),
+      'device-key': z.number().optional(),
+      'product-name': z.string().optional(),
+      track_only_changes: z.boolean().optional(),
+      display_name: z.string().optional(),
+      host_sw_version: z.boolean().optional(),
+      time_series: z.boolean().optional(),
+      derived: z.boolean().optional(),
+      app_type: z.string().optional(),
+      recipe: z.string().optional(),
+      value: z.string().optional(),
+      denied_roles: z.array(z.string().or(z.null())),
+      ack_enabled: z.boolean().optional(),
+      retention_days: z.number().optional(),
+      ack_status: z.number().optional(),
+      ack_message: z.number().optional(),
+      acked_at: z.string().optional(),
+    }),
+  }),
+);
