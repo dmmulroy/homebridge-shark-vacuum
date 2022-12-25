@@ -267,7 +267,7 @@ export class SharkAPIClient {
     try {
       const result = await this.fetch(
         `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties/SET_${property}`,
-        getDevicePropertySchema,
+        setDevicePropertySchema,
         {
           method: 'post',
           body: JSON.stringify({
@@ -278,7 +278,7 @@ export class SharkAPIClient {
         },
       );
 
-      return result.property;
+      return result.datapoint;
     } catch (error) {
       if (error instanceof SharkAPIError) {
         throw error;
@@ -390,36 +390,36 @@ const getDeviceMetadataSchema = z.array(
   }),
 );
 
-const getDevicePropertiesSchema = z.array(
-  z.object({
-    property: z.object({
-      type: z.string().optional(),
-      name: z.string().optional(),
-      'base-type': z.string().optional(),
-      'read-only': z.boolean().optional(),
-      direction: z.string().optional(),
-      scope: z.string().optional(),
-      'data-updated-at': z.string().optional(),
-      key: z.number().optional(),
-      'device-key': z.number().optional(),
-      'product-name': z.string().optional(),
-      track_only_changes: z.boolean().optional(),
-      display_name: z.string().optional(),
-      host_sw_version: z.boolean().optional(),
-      time_series: z.boolean().optional(),
-      derived: z.boolean().optional(),
-      app_type: z.string().optional(),
-      recipe: z.string().optional(),
-      value: z.string().optional(),
-      denied_roles: z.array(z.string().or(z.null())),
-      ack_enabled: z.boolean().optional(),
-      retention_days: z.number().optional(),
-      ack_status: z.number().optional(),
-      ack_message: z.number().optional(),
-      acked_at: z.string().optional(),
-    }),
+const getDevicePropertySchema = z.object({
+  property: z.object({
+    type: z.string().optional(),
+    name: z.string().optional(),
+    'base-type': z.string().optional(),
+    'read-only': z.boolean().optional(),
+    direction: z.string().optional(),
+    scope: z.string().optional(),
+    'data-updated-at': z.string().optional(),
+    key: z.number().optional(),
+    'device-key': z.number().optional(),
+    'product-name': z.string().optional(),
+    track_only_changes: z.boolean().optional(),
+    display_name: z.string().optional(),
+    host_sw_version: z.boolean().optional(),
+    time_series: z.boolean().optional(),
+    derived: z.boolean().optional(),
+    app_type: z.string().optional(),
+    recipe: z.string().optional(),
+    value: z.string().optional(),
+    denied_roles: z.array(z.string().or(z.null())),
+    ack_enabled: z.boolean().optional(),
+    retention_days: z.number().optional(),
+    ack_status: z.number().optional(),
+    ack_message: z.number().optional(),
+    acked_at: z.string().optional(),
   }),
-);
+});
+
+const getDevicePropertiesSchema = z.array(getDevicePropertySchema);
 
 const setDevicePropertySchema = z.object({
   datapoint: z.object({
