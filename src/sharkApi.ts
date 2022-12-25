@@ -1,5 +1,5 @@
-import fetch from 'node-fetch';
-import { z } from 'zod';
+import fetch, { RequestInit } from 'node-fetch';
+import { z, ZodType, ZodTypeDef } from 'zod';
 import { getErrorMessage } from './getErrorMessage';
 import { CustomError } from 'ts-custom-error';
 
@@ -14,9 +14,9 @@ const BASE_API_URL = 'https://ads-field-39a9391a.aylanetworks.com';
 export class SharkAPIClient {
   private accessToken: string | undefined;
   private refreshToken: string | undefined;
+  private expirationTime: number | undefined;
   private readonly appId: AppId;
   private readonly appSecret: AppSecret;
-  private devices: Device[] = [];
 
   constructor(
     private readonly email: string,
@@ -24,48 +24,85 @@ export class SharkAPIClient {
     private readonly mobileType: MobileOSType,
   ) {
     this.appId =
-      mobileType === 'Apple iOS'
+      this.mobileType === 'Apple iOS'
         ? 'Shark-iOS-field-id'
         : 'Shark-Android-field-id';
 
     this.appSecret =
-      mobileType === 'Apple iOS'
+      this.mobileType === 'Apple iOS'
         ? 'Shark-iOS-field-_wW7SiwgrHN8dpU_ugCattOoDk8'
         : 'Shark-Android-field-Wv43MbdXRM297HUHotqe6lU1n-w';
   }
 
-  public async login() {
+  private async fetch<T>(
+    endpoint: string,
+    responeSchema: ZodType<T, ZodTypeDef, unknown>,
+    opts?: RequestInit,
+  ) {
     try {
-      const response = await fetch(`${BASE_API_URL}/users/sign_in.json`, {
-        method: 'post',
+      const mergedOptions = {
+        ...opts,
+        method: 'get',
         headers: {
           'Content-Type': 'application/json',
+          ...opts?.headers,
         },
-        body: JSON.stringify({
-          user: {
-            email: this.email,
-            password: this.password,
-            application: {
-              app_id: this.appId,
-              app_secret: this.appSecret,
-            },
-          },
-        }),
-      });
+      };
+
+      if (this.accessToken) {
+        mergedOptions.headers[
+          'Authorization'
+        ] = `auth_token ${this.accessToken}`;
+      }
+
+      const response = await fetch(`${BASE_API_URL}${endpoint}`, opts);
 
       if (!response.ok) {
         const data = await response.json();
-        const { error } = errorSchema.parse(data);
+        const { error } = errorSceham.parse(data);
 
-        throw new SharkBadRequestError(error);
+        throw new SharkBadRequestError(error, response.status);
       }
 
       const data = await response.json();
 
-      const loginResponseData = loginSchema.parse(data);
+      return responeSchema.parse(data);
+    } catch (error) {
+      if (error instanceof SharkAPIError) {
+        throw error;
+      } else {
+        throw new SharkAPIError(
+          `An error occured while making making a request to ${BASE_API_URL}${endpoint}: ${getErrorMessage(
+            error,
+          )}`,
+        );
+      }
+    }
+  }
+
+  public async login() {
+    try {
+      const loginResponseData = await this.fetch(
+        '/users/sign_in.json',
+        loginSchema,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            user: {
+              email: this.email,
+              password: this.password,
+              application: {
+                app_id: this.appId,
+                app_secret: this.appSecret,
+              },
+            },
+          }),
+        },
+      );
 
       this.accessToken = loginResponseData.access_token;
       this.refreshToken = loginResponseData.refresh_token;
+      this.expirationTime = Date.now() + loginResponseData.expires_in;
     } catch (error) {
       if (error instanceof SharkAPIError) {
         throw error;
@@ -81,27 +118,12 @@ export class SharkAPIClient {
 
   public async getAllDevices() {
     try {
-      const response = await fetch(`${BASE_API_URL}/apiv1/devices.json`, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `auth_token ${this.accessToken}`,
-        },
-      });
+      const devices = await this.fetch(
+        `${BASE_API_URL}/apiv1/devices.json`,
+        getAllDevicesSchema,
+      );
 
-      if (!response.ok) {
-        const data = await response.json();
-        const { error } = errorSchema.parse(data);
-
-        throw new SharkBadRequestError(error);
-      }
-
-      const data = await response.json();
-
-      const devices = getAllDevicesSchema.parse(data);
-
-      this.devices = devices.map(({ device }) => device);
-
-      return devices;
+      return devices.map(({ device }) => device);
     } catch (error) {
       if (error instanceof SharkAPIError) {
         throw error;
@@ -115,25 +137,10 @@ export class SharkAPIClient {
 
   public async getDeviceMetadata(deviceId: string) {
     try {
-      const response = await fetch(
+      const metadata = await this.fetch(
         `${BASE_API_URL}/apiv1/dsns/${deviceId}/data.json`,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `auth_token ${this.accessToken}`,
-          },
-        },
+        getDeviceMetadataSchema,
       );
-
-      if (!response.ok) {
-        const data = await response.json();
-        const { error } = errorSchema.parse(data);
-
-        throw new SharkBadRequestError(error);
-      }
-
-      const data = await response.json();
-      const metadata = getDeviceMetadataSchema.parse(data);
 
       return metadata;
     } catch (error) {
@@ -151,24 +158,12 @@ export class SharkAPIClient {
 
   public async getDeviceProperties(deviceId: string) {
     try {
-      const response = await fetch(
+      const properties = await this.fetch(
         `${BASE_API_URL}/apiv1/dsns/${deviceId}/data.json`,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `auth_token ${this.accessToken}`,
-          },
-        },
+        getDevicePropertiesSchema,
       );
 
-      if (!response.ok) {
-        const data = await response.json();
-        const { error } = errorSchema.parse(data);
-
-        throw new SharkBadRequestError(error);
-      }
-
-      const data = await response.json();
+      return properties;
     } catch (error) {
       if (error instanceof SharkAPIError) {
         throw error;
@@ -187,7 +182,7 @@ export class SharkAPIClient {
 class SharkAPIError extends CustomError {}
 
 class SharkBadRequestError extends SharkAPIError {
-  constructor(errorMsg: string) {
+  constructor(errorMsg: string, code: number) {
     super(errorMsg);
   }
 }
@@ -259,7 +254,7 @@ const deviceSchema = z.object({
 
 const getAllDevicesSchema = z.array(deviceSchema);
 
-const errorSchema = z.object({ error: z.string() });
+const errorSceham = z.object({ error: z.string() });
 
 // Zod Inferred Types
 type Device = z.infer<typeof deviceSchema>['device'];
