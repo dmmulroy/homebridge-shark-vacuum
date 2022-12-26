@@ -1,5 +1,5 @@
 import fetch, { RequestInit } from 'node-fetch';
-import { z, ZodType, ZodTypeDef } from 'zod';
+import { z, ZodError, ZodType, ZodTypeDef } from 'zod';
 import { getErrorMessage } from './getErrorMessage';
 import { CustomError } from 'ts-custom-error';
 
@@ -79,6 +79,14 @@ export class SharkAPIClient {
     } catch (error) {
       if (error instanceof SharkAPIError) {
         throw error;
+      }
+
+      if (error instanceof ZodError) {
+        throw new SharkResponseValidationError(
+          `Shark API Response for endpoint '${BASE_API_URL}${endpoint}' failed Zod validation: ${JSON.stringify(
+            error.flatten().fieldErrors,
+          )}`,
+        );
       } else {
         throw new SharkAPIError(
           `An error occured while making making a request to ${BASE_API_URL}${endpoint}: ${getErrorMessage(
@@ -190,32 +198,20 @@ export class SharkAPIClient {
     property: string,
     value: string,
   ) {
-    try {
-      const result = await this.fetch(
-        `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties/SET_${property}`,
-        setDevicePropertySchema,
-        {
-          method: 'post',
-          body: JSON.stringify({
-            datapoint: {
-              value,
-            },
-          }),
-        },
-      );
+    const result = await this.fetch(
+      `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties/SET_${property}/datapoints`,
+      setDevicePropertySchema,
+      {
+        method: 'post',
+        body: JSON.stringify({
+          datapoint: {
+            value,
+          },
+        }),
+      },
+    );
 
-      return result.datapoint;
-    } catch (error) {
-      if (error instanceof SharkAPIError) {
-        throw error;
-      } else {
-        throw new SharkAPIError(
-          `An error while retrieving properties for device ${deviceSerialNumber}: ${getErrorMessage(
-            error,
-          )}`,
-        );
-      }
-    }
+    return result.datapoint;
   }
 }
 
@@ -231,7 +227,7 @@ class SharkBadRequestError extends SharkAPIError {
   }
 }
 
-// class UnauthenticatedError extends SharkAPIError {}
+class SharkResponseValidationError extends SharkAPIError {}
 
 // Zod Validators
 const loginSchema = z.object({
@@ -299,9 +295,6 @@ const deviceSchema = z.object({
 const getAllDevicesSchema = z.array(deviceSchema);
 
 const errorSceham = z.object({ error: z.string() });
-
-// Zod Inferred Types
-// type Device = z.infer<typeof deviceSchema>['device'];
 
 const getDeviceMetadataSchema = z.array(
   z.object({
