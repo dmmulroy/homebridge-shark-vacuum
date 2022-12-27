@@ -7,7 +7,7 @@ export class SharkVacuum {
   ) {}
 
   async getOperatingMode() {
-    const operatingMode = await this.api.getDeviceProperty(
+    await this.api.getDeviceProperty(
       this.properties.serialNumber,
       'Operating_Mode',
     );

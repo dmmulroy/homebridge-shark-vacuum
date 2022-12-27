@@ -321,36 +321,29 @@ const getDeviceMetadataSchema = z.array(
   }),
 );
 
-const getDevicePropertySchema = z
-  .discriminatedUnion('base-type', [
-    z.object({
-      name: z.string(),
-      'base-type': z.literal('integer'),
-      'product-name': z.string(),
-      display_name: z.string(),
-      value: z.number(),
-    }),
-    z.object({
-      name: z.string(),
-      'base-type': z.literal('string'),
-      'product-name': z.string(),
-      display_name: z.string(),
-      value: z.string(),
-    }),
-    z.object({
-      name: z.string(),
-      'base-type': z.literal('boolean'),
-      'product-name': z.string(),
-      display_name: z.string(),
-      value: z.boolean(),
-    }),
-  ])
-  .transform((property) => ({
-    name: property.name,
-    baseType: property['base-type'],
-    deviceName: property['product-name'],
-    value: property.value,
-  }));
+const getDevicePropertySchema = z.discriminatedUnion('base-type', [
+  z.object({
+    name: z.string(),
+    'base-type': z.literal('integer'),
+    'product-name': z.string(),
+    display_name: z.string(),
+    value: z.number(),
+  }),
+  z.object({
+    name: z.string(),
+    'base-type': z.literal('string'),
+    'product-name': z.string(),
+    display_name: z.string(),
+    value: z.string(),
+  }),
+  z.object({
+    name: z.string(),
+    'base-type': z.literal('boolean'),
+    'product-name': z.string(),
+    display_name: z.string(),
+    value: z.boolean(),
+  }),
+]);
 
 const getDevicePropertiesSchema = z.array(getDevicePropertySchema);
 
