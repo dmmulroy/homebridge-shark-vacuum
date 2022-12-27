@@ -1,28 +1,47 @@
-import { SharkAPIClient } from './sharkApi';
-
-interface SharkVacuumProperties {
-  serialNumber: string;
-  name: string;
-  model: string;
-  connectionStatus: 'online' | 'offline';
-  softwareVersion: string;
-}
+import { DeviceProperties, SharkAPIClient } from './sharkApi';
 
 export class SharkVacuum {
-  readonly serialNumber: string;
-  readonly name: string;
-  readonly model: string;
-  readonly connectionStatus: 'online' | 'offline';
-  readonly softwareVersion: string;
-
   constructor(
     private readonly api: SharkAPIClient,
-    properties: SharkVacuumProperties,
-  ) {
-    this.serialNumber = properties.serialNumber;
-    this.name = properties.name;
-    this.model = properties.model;
-    this.connectionStatus = properties.connectionStatus;
-    this.softwareVersion = properties.softwareVersion;
+    public readonly properties: DeviceProperties,
+  ) {}
+
+  async getOperatingMode() {
+    const operatingMode = await this.api.getDeviceProperty(
+      this.properties.serialNumber,
+      'Operating_Mode',
+    );
+  }
+
+  async clean() {
+    await this.api.setDeviceProperty(
+      this.properties.serialNumber,
+      'Operating_Mode',
+      2,
+    );
+  }
+
+  async stop() {
+    await this.api.setDeviceProperty(
+      this.properties.serialNumber,
+      'Operating_Mode',
+      3,
+    );
+  }
+
+  async pause() {
+    await this.api.setDeviceProperty(
+      this.properties.serialNumber,
+      'Operating_Mode',
+      0,
+    );
+  }
+
+  async locate() {
+    await this.api.setDeviceProperty(
+      this.properties.serialNumber,
+      'Find_Device',
+      1,
+    );
   }
 }

@@ -163,7 +163,7 @@ export class SharkAPIClient {
       getAllDevicesSchema,
     );
 
-    return devices.map(({ device }) => device);
+    return devices;
   }
 
   public async getDeviceMetadata(deviceSerialNumber: string) {
@@ -181,7 +181,7 @@ export class SharkAPIClient {
       getDevicePropertiesSchema,
     );
 
-    return properties.map(({ property }) => property);
+    return properties;
   }
 
   public async getDeviceProperty(deviceSerialNumber: string, property: string) {
@@ -190,13 +190,13 @@ export class SharkAPIClient {
       getDevicePropertySchema,
     );
 
-    return result.property;
+    return result;
   }
 
   public async setDeviceProperty(
     deviceSerialNumber: string,
     property: string,
-    value: string,
+    value: string | number | boolean,
   ) {
     const result = await this.fetch(
       `${BASE_API_URL}/apiv1/dsns/${deviceSerialNumber}/properties/SET_${property}/datapoints`,
@@ -240,57 +240,69 @@ const loginSchema = z.object({
   ),
 });
 
-const deviceSchema = z.object({
-  device: z.object({
-    id: z.number().optional(),
-    product_name: z.string().optional(),
-    model: z.string().optional(),
-    dsn: z.string(),
-    oem: z.string().optional(),
-    oem_model: z.string().optional(),
-    sw_version: z.string().optional(),
-    user_id: z.string().optional(),
-    user_uuid: z.string().optional(),
-    template_id: z.number().optional(),
-    mac: z.string().optional(),
-    ip: z.string().optional(),
-    lan_ip: z.string().optional(),
-    ssid: z.string().optional(),
-    connected_at: z.string().optional(),
-    key: z.number().optional(),
-    product_class: z.string().nullable(),
-    has_properties: z.boolean().optional(),
-    lan_enabled: z.boolean().optional(),
-    enable_ssl: z.boolean().optional(),
-    ans_enabled: z.boolean().optional(),
-    ans_server: z.string().optional(),
-    log_enabled: z.boolean().optional(),
-    registered: z.boolean().optional(),
-    connection_status: z.string().optional(),
-    registration_type: z.string().optional(),
-    lat: z.string().optional(),
-    lng: z.string().optional(),
-    locality: z.string().optional(),
-    homekit: z.string().optional(),
-    module_updated_at: z.string().optional(),
-    registrable: z.boolean().optional(),
-    regtoken: z.string().optional(),
-    setup_token: z.string().optional(),
-    provisional: z.boolean().optional(),
-    device_type: z.string().optional(),
-    activated_at: z.string().optional(),
-    created_at: z.string().optional(),
-    grant: z
-      .object({
-        'user-id': z.number().optional(),
-        'start-date-at': z.string().optional(),
-        'end-date-at': z.string().optional(),
-        operation: z.string().optional(),
-      })
-      .optional(),
-    'gateway-type': z.string().optional(),
-  }),
-});
+const deviceSchema = z
+  .object({
+    device: z.object({
+      id: z.number().optional(),
+      product_name: z.string(), // According to the api docs this can be optional, but we need this field
+      model: z.string(), // According to the api docs this can be optional, but we need this field
+      dsn: z.string(),
+      oem: z.string().optional(),
+      oem_model: z.string().optional(),
+      sw_version: z.string(), // According to the api docs this can be optional, but we need this field
+      user_id: z.string().optional(),
+      user_uuid: z.string().optional(),
+      template_id: z.number().optional(),
+      mac: z.string().optional(),
+      ip: z.string().optional(),
+      lan_ip: z.string().optional(),
+      ssid: z.string().optional(),
+      connected_at: z.string().optional(),
+      key: z.number().optional(),
+      product_class: z.string().nullable(),
+      has_properties: z.boolean().optional(),
+      lan_enabled: z.boolean().optional(),
+      enable_ssl: z.boolean().optional(),
+      ans_enabled: z.boolean().optional(),
+      ans_server: z.string().optional(),
+      log_enabled: z.boolean().optional(),
+      registered: z.boolean().optional(),
+      connection_status: z.enum(['online', 'offline']), // According to the api docs this can be optional, but we need this field
+      registration_type: z.string().optional(),
+      lat: z.string().optional(),
+      lng: z.string().optional(),
+      locality: z.string().optional(),
+      homekit: z.string().optional(),
+      module_updated_at: z.string().optional(),
+      registrable: z.boolean().optional(),
+      regtoken: z.string().optional(),
+      setup_token: z.string().optional(),
+      provisional: z.boolean().optional(),
+      device_type: z.string().optional(),
+      activated_at: z.string().optional(),
+      created_at: z.string().optional(),
+      grant: z
+        .object({
+          'user-id': z.number().optional(),
+          'start-date-at': z.string().optional(),
+          'end-date-at': z.string().optional(),
+          operation: z.string().optional(),
+        })
+        .optional(),
+      'gateway-type': z.string().optional(),
+    }),
+  })
+  .transform(({ device }) => ({
+    serialNumber: device.dsn,
+    name: device.product_name,
+    model: device.model,
+    connectionStatus: device.connection_status,
+    softwareVersion: device.sw_version,
+  }));
+
+export type DeviceProperties = z.infer<typeof deviceSchema> & {
+  connectionStatus: 'online' | 'offline';
+};
 
 const getAllDevicesSchema = z.array(deviceSchema);
 
@@ -309,34 +321,36 @@ const getDeviceMetadataSchema = z.array(
   }),
 );
 
-const getDevicePropertySchema = z.object({
-  property: z.object({
-    type: z.string().optional(),
-    name: z.string().optional(),
-    'base-type': z.string().optional(),
-    'read-only': z.boolean().optional(),
-    direction: z.string().optional(),
-    scope: z.string().optional(),
-    'data-updated-at': z.string().optional(),
-    key: z.number().optional(),
-    'device-key': z.number().optional(),
-    'product-name': z.string().optional(),
-    track_only_changes: z.boolean().optional(),
-    display_name: z.string().optional(),
-    host_sw_version: z.boolean().optional(),
-    time_series: z.boolean().optional(),
-    derived: z.boolean().optional(),
-    app_type: z.string().optional(),
-    recipe: z.string().optional(),
-    value: z.string().optional(),
-    denied_roles: z.array(z.string().or(z.null())),
-    ack_enabled: z.boolean().optional(),
-    retention_days: z.number().optional(),
-    ack_status: z.number().optional(),
-    ack_message: z.number().optional(),
-    acked_at: z.string().optional(),
-  }),
-});
+const getDevicePropertySchema = z
+  .discriminatedUnion('base-type', [
+    z.object({
+      name: z.string(),
+      'base-type': z.literal('integer'),
+      'product-name': z.string(),
+      display_name: z.string(),
+      value: z.number(),
+    }),
+    z.object({
+      name: z.string(),
+      'base-type': z.literal('string'),
+      'product-name': z.string(),
+      display_name: z.string(),
+      value: z.string(),
+    }),
+    z.object({
+      name: z.string(),
+      'base-type': z.literal('boolean'),
+      'product-name': z.string(),
+      display_name: z.string(),
+      value: z.boolean(),
+    }),
+  ])
+  .transform((property) => ({
+    name: property.name,
+    baseType: property['base-type'],
+    deviceName: property['product-name'],
+    value: property.value,
+  }));
 
 const getDevicePropertiesSchema = z.array(getDevicePropertySchema);
 
